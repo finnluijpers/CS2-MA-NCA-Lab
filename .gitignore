@@ -1,0 +1,45 @@
+﻿# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+override.tf
+override.tf.json
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+vault_password*
+.vault-pass*
+
+# Ansible
+*.retry
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backup files and runtime logs
+*.bak
+*.log
+soar/soar_audit.log
+
+# Vagrant runtime data
+.vagrant/

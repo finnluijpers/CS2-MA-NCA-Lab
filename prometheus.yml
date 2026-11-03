@@ -1,0 +1,21 @@
+
+global:
+  scrape_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+rule_files:
+  - '/etc/prometheus/rules/alert.rules.yml'
+
+scrape_configs:
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets:
+          - '192.168.88.10:9100' # app01
+          - '192.168.88.11:9100' # app02
+          - '192.168.88.12:9100' # db01
+          - '100.94.85.84:9100'  # cloud01 via Tailscale

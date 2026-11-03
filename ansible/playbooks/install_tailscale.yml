@@ -1,0 +1,62 @@
+
+---
+- name: Install and configure Tailscale
+  hosts: tailscale_nodes
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Download Tailscale signing key
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: "0644"
+
+    - name: Add Tailscale repository
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list
+        dest: /etc/apt/sources.list.d/tailscale.list
+        mode: "0644"
+
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+
+    - name: Enable Tailscale service
+      ansible.builtin.systemd:
+        name: tailscaled
+        enabled: true
+        state: started
+
+    - name: Check whether Tailscale is connected
+      ansible.builtin.command:
+        cmd: tailscale ip -4
+      register: tailscale_ip
+      changed_when: false
+      failed_when: false
+
+    - name: Connect machine to Tailscale
+      ansible.builtin.command:
+        argv:
+          - tailscale
+          - up
+          - "--auth-key={{ vault_tailscale_authkey }}"
+          - "--hostname={{ inventory_hostname }}"
+          - "--advertise-tags={{ tailscale_tag }}"
+      when: tailscale_ip.rc != 0
+      no_log: true
+
+    - name: Display Tailscale IP
+      ansible.builtin.command:
+        cmd: tailscale ip -4
+      register: tailscale_final_ip
+      changed_when: false
+
+    - name: Show connection details
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} connected with Tailscale IP {{ tailscale_final_ip.stdout }}"

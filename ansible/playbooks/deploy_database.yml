@@ -1,0 +1,50 @@
+---
+- name: Deploy MariaDB Database Layer
+  hosts: db01
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install MariaDB Server and Python MySQL binding
+      apt:
+        name:
+          - mariadb-server
+          - python3-pymysql
+        state: present
+
+    - name: Ensure MariaDB service is started and enabled
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Configure MariaDB to listen on all interfaces
+      lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+      notify: Restart MariaDB
+
+    - name: Create Innovatech application database
+      mysql_db:
+        name: innovatech_db
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create database user for backend nodes
+      mysql_user:
+        name: innovatech_user
+        password: "SecurePassword123!"
+        priv: 'innovatech_db.*:ALL'
+        host: '%'
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+  handlers:
+    - name: Restart MariaDB
+      systemd:
+        name: mariadb
+        state: restarted

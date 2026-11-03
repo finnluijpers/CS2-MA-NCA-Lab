@@ -1,0 +1,252 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "node-exporter-overview",
+    "project": "Innovatech"
+  },
+  "spec": {
+    "display": {
+      "name": "Node Exporter Overview",
+      "description": "Hybride Infrastructuur Status & SOAR Alerting Dashboard"
+    },
+    "duration": "1h",
+    "refreshInterval": "10s",
+    "datasources": {
+      "prometheus": {
+        "default": true,
+        "plugin": {
+          "kind": "PrometheusDatasource",
+          "spec": {
+            "proxy": {
+              "kind": "HTTPProxy",
+              "spec": {
+                "url": "http://prometheus:9090"
+              }
+            }
+          }
+        }
+      }
+    },
+    "panels": {
+      "node-status": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Nodes Online Status (1 = UP, 0 = DOWN)",
+            "description": "Status van app01, app02, db01 en cloud01"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "up{job=\"node_exporter\"}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "soar-alerts": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Active Firing Alerts (SOAR Triggers)",
+            "description": "Actieve alarmeringen in Prometheus/Alertmanager"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "ALERTS{alertstate=\"firing\"}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "cpu-usage": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "CPU Usage per Node (%)",
+            "description": "Percentage CPU belasting over de afgelopen 2 minuten"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "100 - (avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "memory-usage": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "RAM Memory Usage per Node (%)",
+            "description": "Gebruikte RAM capaciteit per node"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "system-load": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "System Load Average (1m)",
+            "description": "1-minuut CPU load average per node"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "node_load1"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "network-traffic": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Network Received Traffic (KB/s)",
+            "description": "Inkomend netwerkverkeer per node"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*\"}[2m]) / 1024"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "items": [
+            {
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/node-status"
+              }
+            },
+            {
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/soar-alerts"
+              }
+            },
+            {
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/cpu-usage"
+              }
+            },
+            {
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/memory-usage"
+              }
+            },
+            {
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/system-load"
+              }
+            },
+            {
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "content": {
+                "$ref": "#/spec/panels/network-traffic"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+---
+- name: Deploy Web Application Layer
+  hosts: app02,cloud01
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Deploy custom Web Page
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Innovatech Solutions - Node Status</title>
+              <style>
+                  body { font-family: Arial, sans-serif; background-color: #1a1a2e; color: #e0e0e0; text-align: center; padding-top: 50px; }
+                  .card { background-color: #16213e; border-radius: 8px; padding: 20px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+                  h1 { color: #00fff5; }
+                  .host { color: #f50057; font-weight: bold; }
+              </style>
+          </head>
+          <body>
+              <div class="card">
+                  <h1>Innovatech Hybrid Cloud Node</h1>
+                  <p>Serving request from node: <span class="host">{{ inventory_hostname }}</span></p>
+                  <p>Status: <span style="color: #00ff00;">ONLINE</span></p>
+              </div>
+          </body>
+          </html>
+
+    - name: Ensure Nginx is running
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+- name: Configure Nginx Load Balancer on app01
+  hosts: app01
+  become: true
+  tasks:
+    - name: Install Nginx on app01
+      apt:
+        name: nginx
+        state: present
+
+    - name: Configure Nginx Load Balancer upstream
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          upstream backend_servers {
+              server 192.168.56.11:80 max_fails=3 fail_timeout=5s; # app02
+              server 3.79.236.10:80 max_fails=3 fail_timeout=5s;   # cloud01
+          }
+
+          server {
+              listen 80;
+              server_name _;
+
+              location / {
+                  proxy_pass http://backend_servers;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              }
+          }
+
+    - name: Restart Nginx on app01
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes

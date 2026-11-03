@@ -1,0 +1,88 @@
+---
+- name: Deploy Monitoring Agents (Node Exporter & Elastic Agent)
+  hosts: all
+  become: true
+  vars:
+    node_exporter_version: "1.8.2"
+    elastic_agent_version: "9.5.5"
+    elastic_fleet_url: "https://dd1deff319d24cd591e99338f5c21b60.fleet.us-central1.gcp.cloud.es.io:443"
+    elastic_enrollment_token: "ai01RWVLRUJoN21aaE9abzVKSlI6dGdJWlNINFRrd0tBcVdUT1J6VjdjZw=="
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # --- NODE EXPORTER SETUP (For Prometheus/Grafana) ---
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: yes
+
+    - name: Download Node Exporter binary
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: "/tmp/node_exporter.tar.gz"
+
+    - name: Extract Node Exporter
+      unarchive:
+        src: "/tmp/node_exporter.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+
+    - name: Copy Node Exporter binary to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: "/usr/local/bin/node_exporter"
+        owner: node_exporter
+        group: node_exporter
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create Node Exporter systemd service
+      copy:
+        dest: "/etc/systemd/system/node_exporter.service"
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start and enable Node Exporter
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # --- ELASTIC AGENT SETUP (Enterprise Logs, SOAR & Fleet Telemetry) ---
+    - name: Download Elastic Agent package
+      get_url:
+        url: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ elastic_agent_version }}-linux-x86_64.tar.gz"
+        dest: "/tmp/elastic-agent.tar.gz"
+
+    - name: Extract Elastic Agent
+      unarchive:
+        src: "/tmp/elastic-agent.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+
+    - name: Install and enroll Elastic Agent non-interactively
+      shell: |
+        /tmp/elastic-agent-{{ elastic_agent_version }}-linux-x86_64/elastic-agent install \
+          --url="{{ elastic_fleet_url }}" \
+          --enrollment-token="{{ elastic_enrollment_token }}" \
+          --non-interactive
+      args:
+        creates: /opt/Elastic/Agent/elastic-agent
