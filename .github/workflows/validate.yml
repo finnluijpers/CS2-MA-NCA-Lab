@@ -1,0 +1,59 @@
+
+name: infrastructure validation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: Validate terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+      - name: Initialize Terraform
+        run: terraform init -backend=false
+        working-directory: terraform
+
+      - name: Validate Terraform
+        run: terraform validate
+        working-directory: terraform
+
+  ansible:
+    name: Validate Ansible
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Ansible
+        run: python -m pip install ansible-core
+
+      - name: Check Ansible playbook syntax
+        run: |
+          set -e
+          for playbook in ansible/playbooks/*.yml; do
+            echo "Checking $playbook"
+            ansible-playbook --syntax-check -i 'localhost,' "$playbook"
+          done
